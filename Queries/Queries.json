@@ -1,0 +1,14 @@
+{
+  "queries": [
+    {
+      "name" : "OrderFailureCount",
+      "eventName" : "OrderFailed",
+      "aggregation" : "count",
+      "windowSeconds": 60,
+      "dimensions": [
+        "service",
+        "region"
+      ]
+    }
+  ]
+}
