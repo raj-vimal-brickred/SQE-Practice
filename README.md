@@ -10,6 +10,7 @@ The application receives telemetry events, matches them against configured stand
 
 ```text
 Application
+
     |
     v
 POST /api/events

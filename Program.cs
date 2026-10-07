@@ -1,14 +1,22 @@
 using Microsoft.EntityFrameworkCore;
+using SQE_Practice.Middleware;
+using SQE_Practice.Observability;
 using SQE_Practice.Services;
+using SQE_Practice.Storage;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using SQE_Practice.Observability;
-using SQE_Practice.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.Configure<RequestMiddlewareOptions>(
+    builder.Configuration.GetSection(
+        RequestMiddlewareOptions.SectionName));
+
 builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 builder.Services.AddSingleton<EventStore>();
 builder.Services.AddSingleton<EventIngestionService>();
 builder.Services.AddSingleton<QueryLoader>();
@@ -17,13 +25,14 @@ builder.Services.AddSingleton<MetricStore>();
 builder.Services.AddSingleton<StandingQueryEngine>();
 builder.Services.AddSingleton<AlertStore>();
 builder.Services.AddSingleton<AlertEngine>();
+builder.Services.AddSingleton<FilterEngine>();
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddScoped<RequestLogStore>();
+
 var connectionString =
 builder.Configuration.GetConnectionString("SqeDatabase")
 ?? throw new InvalidOperationException(
-"Connection string 'SqeDatabase' was not found.");
+    "Connection string 'SqeDatabase' was not found.");
 
 builder.Services.AddDbContextFactory<SqeDbContext>(
 options =>
@@ -74,6 +83,8 @@ var app = builder.Build();
 
 app.UseSwagger();
 app.UseSwaggerUI();
+
+app.UseMiddleware<RequestTelemetryMiddleware>();
 
 app.UseHttpsRedirection();
 

@@ -1,14 +1,27 @@
 {
   "queries": [
     {
-      "name" : "OrderFailureCount",
-      "eventName" : "OrderFailed",
-      "Aggregration" : "count",
+      "name": "OrderFailureCount",
+      "eventName": "OrderFailed",
+      "filters": [
+        {
+          "property": "errorCode",
+          "operator": "eq",
+          "value": "500"
+        }
+      ],
+      "Aggregration": "count",
       "windowSeconds": 60,
       "dimensions": [
         "service",
         "region"
-      ]
+      ],
+      "alert": {
+        "operator": "gte",
+        "threshold": 10,
+        "cooldownSeconds": 15,
+        "enabled": true
+      }
     }
   ]
 }

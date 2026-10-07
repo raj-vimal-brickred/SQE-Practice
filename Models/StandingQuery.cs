@@ -1,4 +1,4 @@
-﻿namespace SQE_Practice.Models
+namespace SQE_Practice.Models
 {
     public class StandingQuery
     {
@@ -7,6 +7,7 @@
         public string Aggregration { get; set; } = "count";
         public int WindowSeconds { get; set; } = 60;
         public List<string> Dimensions { get; set; } = new();
+        public List<QueryFilter> Filters { get; set; } = new();
         public AlertRule? Alert{ get; set; }
     }
 }
