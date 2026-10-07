@@ -27,7 +27,7 @@ Query Match
 Time Window
     |
     v
-Aggregation
+Aggregration
     |
     v
 Metric
@@ -60,7 +60,7 @@ SQE_Practice
 |   |-- EventIngestionService.cs
 |   |-- QueryLoader.cs
 |   |-- StandingQueryEngine.cs
-|   |-- AggregationEngine.cs
+|   |-- AggregrationEngine.cs
 |   |-- EventStore.cs
 |   |-- MetricStore.cs
 |   |-- AlertEngine.cs
@@ -131,7 +131,7 @@ Example:
     {
       "name": "OrderFailureCount",
       "eventName": "OrderFailed",
-      "aggregation": "count",
+      "Aggregration": "count",
       "windowSeconds": 60,
       "dimensions": [
         "service",
@@ -171,11 +171,11 @@ Example:
 windowSeconds = 60
 ```
 
-The aggregation uses matching events that belong to the configured window.
+The Aggregration uses matching events that belong to the configured window.
 
-### 6. Aggregation
+### 6. Aggregration
 
-Matching events are processed by the Aggregation Engine.
+Matching events are processed by the Aggregration Engine.
 
 Example:
 
@@ -492,7 +492,7 @@ Time Window
 Dimensions
     |
     v
-AggregationEngine
+AggregrationEngine
     |
     v
 Metric

@@ -1,31 +1,77 @@
-﻿using SQE_Practice.Models;
+﻿using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using SQE_Practice.Models;
+using SQE_Practice.Storage;
+using SQE_Practice.Storage.Entities;
 
-namespace SQE_Practice.Storage
+namespace SQE_Practice.Services;
+
+public sealed class MetricStore
 {
-    public class MetricStore
-    {
-        private readonly object _lock = new();
-        private readonly Dictionary<string, Metric> _metric = new();
-        public void Save(Metric metric)
-        {
-            var key = CreateKey(metric);
-            lock( _lock )
-            {
-                _metric[key]=metric;
-            }
-        }
-        public List<Metric> GetAll()
-        {
-            lock (_lock)
-            {
-                return _metric.Values.OrderBy(metric => metric.Name).ThenBy(metric => metric.TimeStamp).ToList();
-            }
-        }
+    private readonly IDbContextFactory<SqeDbContext>
+        _dbContextFactory;
 
-        private static string CreateKey(Metric metric)
+    private readonly ILogger<MetricStore> _logger;
+
+    public MetricStore(
+        IDbContextFactory<SqeDbContext> dbContextFactory,
+        ILogger<MetricStore> logger)
+    {
+        _dbContextFactory = dbContextFactory;
+        _logger = logger;
+    }
+
+    public async Task SaveAsync(
+        Metric metric,
+        CancellationToken cancellationToken = default)
+    {
+        await using var database =
+            await _dbContextFactory.CreateDbContextAsync(
+                cancellationToken);
+
+        var entity = new MetricEntity
         {
-            var dimensions = string.Join("|", metric.Dimensions.OrderBy(item => item.Key).Select(item => $"{item.Key}: {item.Value}"));
-            return $"{metric.Name}|{dimensions}";
-        }
+            Name = metric.Name,
+            Value = metric.Value,
+            WindowSeconds = metric.WindowSeconds,
+
+            Timestamp =
+                metric.TimeStamp == default
+                    ? DateTime.UtcNow
+                    : metric.TimeStamp,
+
+            DimensionsJson =
+                JsonSerializer.Serialize(
+                    metric.Dimensions),
+
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        database.Metrics.Add(entity);
+
+        await database.SaveChangesAsync(
+            cancellationToken);
+
+        _logger.LogInformation(
+            "Metric {MetricName} with value {MetricValue} saved.",
+            metric.Name,
+            metric.Value);
+    }
+
+    public async Task<List<MetricEntity>> GetAllAsync(
+        int limit = 100,
+        CancellationToken cancellationToken = default)
+    {
+        limit = Math.Clamp(limit, 1, 1000);
+
+        await using var database =
+            await _dbContextFactory.CreateDbContextAsync(
+                cancellationToken);
+
+        return await database.Metrics
+            .AsNoTracking()
+            .OrderByDescending(item => item.Timestamp)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
     }
 }

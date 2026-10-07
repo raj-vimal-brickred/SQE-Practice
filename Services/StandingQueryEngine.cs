@@ -1,39 +1,80 @@
 ﻿using SQE_Practice.Models;
+using SQE_Practice.Observability;
 
-namespace SQE_Practice.Services
+namespace SQE_Practice.Services;
+
+public sealed class StandingQueryEngine
 {
-    public class StandingQueryEngine
+    private readonly QueryLoader _queryLoader;
+
+    private readonly AggregrationEngine
+        _AggregrationEngine;
+
+    private readonly ILogger<StandingQueryEngine>
+        _logger;
+
+    public StandingQueryEngine(
+        QueryLoader queryLoader,
+        AggregrationEngine AggregrationEngine,
+        ILogger<StandingQueryEngine> logger)
     {
-        private readonly QueryLoader _queryLoader;
-        private readonly AggregationEngine _aggregationEngine;
-        public StandingQueryEngine(QueryLoader queryLoader,AggregationEngine aggregationEngine)
+        _queryLoader = queryLoader;
+        _AggregrationEngine =
+            AggregrationEngine;
+        _logger = logger;
+    }
+
+    public async Task ProcessAsync(
+        TelemetryEvent telemetryEvent,
+        CancellationToken cancellationToken = default)
+    {
+        using var activity =
+    SqeTelemetry.ActivitySource.StartActivity(
+        "SQE.ProcessStandingQueries");
+
+        var queries =
+            await _queryLoader.LoadAsync();
+
+        var matched = false;
+
+        foreach (var query in queries)
         {
-            _queryLoader = queryLoader;
-            _aggregationEngine = aggregationEngine;
+            if (!string.Equals(
+                    query.EventName?.Trim(),
+                    telemetryEvent.EventName?.Trim(),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            matched = true;
+
+            SqeTelemetry.EventsMatched.Add(
+                1,
+                new KeyValuePair<string, object?>(
+                    "query.name",
+                    query.Name));
+
+            activity?.SetTag(
+                "sqe.query.matched",
+                query.Name);
+
+            await _AggregrationEngine.ProcessAsync(
+                query,
+                telemetryEvent,
+                cancellationToken);
         }
-        public async Task ProcessAsync(TelemetryEvent telemetryEvent)
+        if (!matched)
         {
-            var queries = await _queryLoader.LoadAsync();
-            Console.WriteLine($"Queries Loaded : {queries.Count}");
-            Console.WriteLine($"Checking Event : {telemetryEvent.EventName}");
-            var matched = false;
-            foreach(var query in queries)
-            {
-                if (!string.Equals(query.EventName, telemetryEvent.EventName, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-                matched = true;
-                Console.WriteLine("Standing Query Matched");
-                Console.WriteLine($"Query : {query.Name}");
-                Console.WriteLine($"Event : {telemetryEvent.EventName}");
-                Console.WriteLine($"Aggregation : '{query.Aggregration}");
-                _aggregationEngine.Process(query, telemetryEvent);
-            }
-            if (!matched)
-            {
-                Console.WriteLine($"No query Matched '{telemetryEvent.EventName}'");
-            }
+            SqeTelemetry.EventsUnmatched.Add(
+                1,
+                new KeyValuePair<string, object?>(
+                    "event.name",
+                    telemetryEvent.EventName));
+
+            activity?.SetTag(
+                "sqe.query.matched",
+                false);
         }
     }
 }

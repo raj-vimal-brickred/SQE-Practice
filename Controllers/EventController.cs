@@ -5,32 +5,60 @@ using SQE_Practice.Services;
 
 namespace SQE_Practice.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    public class EventController : ControllerBase
+    [Route("api/events")]
+    public sealed class EventsController : ControllerBase
     {
-        private readonly EventIngestionService _eventIngestionService;
-        public EventController(EventIngestionService eventIngestionService) 
-        { 
-            _eventIngestionService= eventIngestionService;
+        private readonly EventIngestionService
+        _eventIngestionService;
+
+        public EventsController(
+        EventIngestionService eventIngestionService)
+        {
+            _eventIngestionService =
+            eventIngestionService;
         }
 
-        [HttpPost("ingest")]
-        public async Task<IActionResult> Ingest([FromBody] TelemetryEvent telemetryEvent)
+        [HttpPost]
+        public async Task<IActionResult> Ingest(
+        [FromBody] TelemetryEvent telemetryEvent,
+        CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(telemetryEvent.EventName))
+            if (string.IsNullOrWhiteSpace(
+            telemetryEvent.EventName))
             {
                 return BadRequest(new
                 {
-                    message = "EventName is Required"
+                    message = "EventName is required."
                 });
             }
-            await _eventIngestionService.Ingest(telemetryEvent);
-            return Ok(new
+
+            if (string.IsNullOrWhiteSpace(
+            telemetryEvent.Service))
+            {
+                return BadRequest(new
+                {
+                    message = "Service is required."
+                });
+            }
+
+            var result =
+            await _eventIngestionService.IngestAsync(
+            telemetryEvent,
+            cancellationToken);
+
+            return result.Duplicate
+            ? Ok(new
             {
                 accepted = true,
-                eventName = telemetryEvent.EventName,
-                message = "Telemetry Event Processed Successfully"
+                duplicate = true,
+                eventId = result.EventId
+            })
+            : Accepted(new
+            {
+                accepted = true,
+                duplicate = false,
+                eventId = result.EventId
             });
         }
     }

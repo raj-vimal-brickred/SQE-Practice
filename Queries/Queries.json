@@ -3,7 +3,7 @@
     {
       "name" : "OrderFailureCount",
       "eventName" : "OrderFailed",
-      "aggregation" : "count",
+      "Aggregration" : "count",
       "windowSeconds": 60,
       "dimensions": [
         "service",
