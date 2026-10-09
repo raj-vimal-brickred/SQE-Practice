@@ -1,10 +1,19 @@
-﻿# SQE Practice
+# SQE Practice
 
 ## Overview
 
 SQE Practice is a .NET application created to reproduce and understand a basic SQE-style telemetry processing flow.
 
 The application receives telemetry events, matches them against configured standing queries, generates metrics, creates alerts, and stores the results in SQL Server.
+
+## New Enterprise Features
+
+* **Custom Telemetry Middleware**: Intercepts every HTTP request, classifies severity (Info, Warning, Error, Critical) based on HTTP status and execution time, and persists complete request/response bodies to SQL Server via `RequestLogStore`.
+* **Request Logs API**: New endpoints (`/api/requestlogs/errors`, `/warnings`, `/slow`, `/summary`) to quickly query and troubleshoot recent system traffic.
+* **Advanced JSON Filtering**: A dynamic `FilterEngine` allows queries to filter incoming events based on their internal JSON properties (e.g., matching `errorCode eq 500`).
+* **Alert Spam Prevention**: A rate-limiting/cooldown mechanism inside `AlertEngine` uses in-memory `ConcurrentDictionary` tracking to prevent alert fatigue under high load.
+* **Production Load Testing**: A `LoadTest.ps1` script simulates heavy, randomized production traffic to validate cooldowns, filters, and SQL persistence.
+* **Extended OpenTelemetry**: Custom HTTP metrics tracking request durations, total traffic, and per-severity hit rates.
 
 ## Project Flow
 
@@ -262,6 +271,7 @@ The database contains:
 Events
 Metrics
 Alerts
+RequestLogs
 ```
 
 The processing flow is:
@@ -455,6 +465,11 @@ Restore each configuration after completing the test.
 POST /api/events
 GET  /api/metrics
 GET  /api/alerts
+GET  /api/requestlogs
+GET  /api/requestlogs/summary
+GET  /api/requestlogs/errors
+GET  /api/requestlogs/warnings
+GET  /api/requestlogs/slow
 ```
 
 ## Complete Application Flow
